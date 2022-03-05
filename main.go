@@ -4,20 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/kit/transport/http"
+	gkhttp "github.com/go-kit/kit/transport/http"
+	"log"
+	"net/http"
 )
 
-type TalkToMe interface {
-	HowsTheWeather(string) string
-}
+//type TalkToMe interface {
+//	HowsTheWeather(string) string
+//}
 
 type weatherRequest struct {
-	zipCode string `json:"zip_code"`
+	ZipCode string `json:"zip_code"`
 }
 
 type weatherResponse struct {
 	Temperature int    `json:"temperature"`
-	Description string `json:"description""`
+	Description string `json:"description"`
 	Err         string `json:"err,omitempty"` // errors don't define JSON marshaling
 }
 
@@ -33,10 +35,10 @@ func (*talkToMe) HowsTheWeather(zipcode string) (int, error) {
 func weatherEndpoint(svc talkToMe) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(weatherRequest)
-		v, err := svc.HowsTheWeather(req.zipCode)
+		v, err := svc.HowsTheWeather(req.ZipCode)
 		if err != nil {
 			//response in json format
-			return weatherResponse{-1, "heres a description", "we had an error"}, nil
+			return weatherResponse{-1, "here's a description", "we had an error"}, nil
 		}
 		//response in json format
 		return weatherResponse{v, "a cool description", ""}, nil
@@ -58,17 +60,16 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 
 func main() {
 
-	ctx := context.Background()
 	t := talkToMe{}
 
 	//Transports to expose your service to the outside world
-	weatherHandler := http.NewServer(
-		ctx,
-		weatherEndpoint(svc),
+	weatherHandler := gkhttp.NewServer(
+		weatherEndpoint(t),
 		decodeWeatherRequest,
 		encodeResponse,
 	)
 
 	http.Handle("/weather", weatherHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 
 }
