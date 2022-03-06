@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/go-kit/kit/endpoint"
 	gkhttp "github.com/go-kit/kit/transport/http"
 	"log"
 	"net/http"
 )
 
-//type TalkToMe interface {
-//	HowsTheWeather(string) string
-//}
+type TalkToMe interface {
+	HowsTheWeather(string) (int, string, error)
+}
 
 type weatherRequest struct {
 	ZipCode string `json:"zip_code"`
@@ -20,28 +21,32 @@ type weatherRequest struct {
 type weatherResponse struct {
 	Temperature int    `json:"temperature"`
 	Description string `json:"description"`
-	Err         string `json:"err,omitempty"` // errors don't define JSON marshaling
 }
 
 type talkToMe struct{}
 
-func (*talkToMe) HowsTheWeather(zipcode string) (int, error) {
-	return 90, nil
+func (*talkToMe) HowsTheWeather(zipCode string) (int, string, error) {
+	if zipCode == "23059" {
+		return 90, "it's hot!", nil
+	} else {
+		return -1, "i don't know", fmt.Errorf("ZipCodeException")
+	}
 }
 
 //Endpoints
 //simple adapters to convert each of our service’s methods into an endpoint
 //type Endpoint func(ctx context.Context, request interface{}) (response interface{}, err error)
-func weatherEndpoint(svc talkToMe) endpoint.Endpoint {
+func weatherEndpoint(svc TalkToMe) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(weatherRequest)
-		v, err := svc.HowsTheWeather(req.ZipCode)
+		temp, description, err := svc.HowsTheWeather(req.ZipCode)
+
 		if err != nil {
-			//response in json format
-			return weatherResponse{-1, "here's a description", "we had an error"}, nil
+			return weatherResponse{temp, description}, err
 		}
+
 		//response in json format
-		return weatherResponse{v, "a cool description", ""}, nil
+		return weatherResponse{temp, description}, nil
 	}
 }
 
@@ -64,7 +69,7 @@ func main() {
 
 	//Transports to expose your service to the outside world
 	weatherHandler := gkhttp.NewServer(
-		weatherEndpoint(t),
+		weatherEndpoint(&t),
 		decodeWeatherRequest,
 		encodeResponse,
 	)
