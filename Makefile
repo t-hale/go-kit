@@ -7,4 +7,6 @@ help: ## Show this help
 lint: ## Run the golangci linter
 	@docker run --rm -v $$(pwd):/app -w /app golangci/golangci-lint golangci-lint run
 
-
+.PHONY: serve
+serve: ## Run the server
+	@docker run --rm -v $$(pwd):/app -w /app -p 8080:8080 golang:1.17.8-buster go run main.go
